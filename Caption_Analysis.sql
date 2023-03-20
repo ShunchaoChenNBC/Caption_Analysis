@@ -14,7 +14,7 @@ cte.*,
 IF(REGEXP_CONTAINS(LOWER(Captions), r'(en|eng|english)'), "English", NULL) as English_Caption,
 IF(REGEXP_CONTAINS(LOWER(Captions), r'(zh|zh-hant|zh-hans|mandarin)'), "Chinese", NULL) as Chinese_Caption,
 IF(REGEXP_CONTAINS(LOWER(Captions), r'(spa|Spanish|es)'), "Spanish", NULL) as Spanish_Caption,
-IF(REGEXP_CONTAINS(LOWER(Captions), r'(cc|cc1|cc3)'), "CLosed", NULL) as Closed_Caption
+IF(REGEXP_CONTAINS(LOWER(Captions), r'(cc|cc1|cc3)'), "CLosed", NULL) as Closed_Caption -- Incl. Backgound sounds and speaker changes (for deaf and hard-of-hearing people)
 from cte)
 
 select Year,
