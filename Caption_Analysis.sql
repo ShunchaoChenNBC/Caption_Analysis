@@ -1,27 +1,44 @@
-with cte as (select 
- extract(YEAR from sdpBusinessDate) as Year,
- extract(MONTH from sdpBusinessDate) as Month,
- adobe_id,
- subtitle,
- SPLIT(subtitle, '|')[SAFE_OFFSET(0)] as Captions -- Caption_Extraction
-FROM `nbcu-ds-sandbox-a-001.jf_sandbox.Subtitle_Analysis_Clickstream_Base` 
-where extract(YEAR from sdpBusinessDate) between 2022 and 2023),
 
-Captions as (select 
+create or replace table `nbcu-ds-sandbox-a-001.Shunchao_Sandbox_Final.English_Caption_Table_Feb` as  
+
+with cte AS
+(select
+DATETIME(timestamp(sdpBusinessDate), "America/New_York") as sdpBusinessDate,
+ adobe_id,
+ subtitle,
+ SPLIT(subtitle, '|')[SAFE_OFFSET(0)] as Subtitles -- Caption_Extraction
+FROM `nbcu-ds-sandbox-a-001.jf_sandbox.Subtitle_Analysis_Clickstream_Base` 
+where date(sdpBusinessDate) between '2023-02-01' and "2023-02-28"),
+
+Captions as (select 
 cte.*,
-IF(REGEXP_CONTAINS(LOWER(Captions), r'(en|eng|english)'), "English", NULL) as English_Caption,
-IF(REGEXP_CONTAINS(LOWER(Captions), r'(zh|zh-hant|zh-hans|mandarin)'), "Chinese", NULL) as Chinese_Caption,
-IF(REGEXP_CONTAINS(LOWER(Captions), r'(spa|Spanish|es)'), "Spanish", NULL) as Spanish_Caption,
-IF(REGEXP_CONTAINS(LOWER(Captions), r'(cc|cc1|cc3|closed captions)'), "Closed", NULL) as Closed_Caption
-from cte)
+extract(YEAR from sdpBusinessDate) as Year,
+extract(MONTH from sdpBusinessDate) as Month,
+case when REGEXP_CONTAINS(LOWER(Subtitles),r'(^en|eng|english)') then "English"
+when REGEXP_CONTAINS(LOWER(Subtitles), r'(zh|zh-hant|zh-hans|mandarin)') then "Chinese"
+when REGEXP_CONTAINS(LOWER(Subtitles), r'(spa|Spanish|es)') then "Spanish"
+when REGEXP_CONTAINS(LOWER(Subtitles), r'(cc|cc1|cc3|closed captions)') then 'Closed_Caption'
+end as Caption
+from cte
+where lower(subtitle) like "%enabled" ),
 
-select Year,
-Month,
-count(distinct case when English_Caption = "English" and lower(subtitle) like "%enabled" then adobe_id end) as English_Accts,
-count(distinct case when Chinese_Caption = "Chinese" and lower(subtitle) like "%enabled" then adobe_id end) as Chinese_Accts,
-count(distinct case when Spanish_Caption = "Spanish" and lower(subtitle) like "%enabled" then adobe_id end) as Spanish_Accts,
-count(distinct case when Closed_Caption = "Closed" and lower(subtitle) like "%enabled" then adobe_id end) as Closed_Accts,
-count (distinct adobe_id) as All_Accts
-from Captions 
-group by 1, 2
-order by 1, 2
+sv as (
+select adobe_date,
+adobe_timestamp,
+adobe_tracking_id,
+display_name,
+num_seconds_played_no_ads
+from `nbcu-ds-prod-001.PeacockDataMartSilver.SILVER_VIDEO`
+where adobe_date between '2023-02-01' and "2023-02-28"
+)
+
+
+select C.*,
+sv.display_name,
+sv.num_seconds_played_no_ads
+from Captions C
+left join sv on timestamp(C.sdpBusinessDate) = timestamp(sv.adobe_timestamp) and C.adobe_id = sv.adobe_tracking_id
+
+
+
+
