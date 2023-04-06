@@ -21,19 +21,19 @@ AND
 ),
 
 /*This pulls the next subtitle event for each event */
-next_event AS (
+next_events AS (
 SELECT
   event.*,
   lead(subtitle) over (partition by aid order by sdpBusinessDate) as next_event,
   lead(sdpBusinessDate) over (partition by aid order by sdpBusinessDate) as next_event_time
-FROM event
+FROM events
 )
 
 /*This narrows down tHe event pairs that start with English subtitles on and ends with disabled, another language, or null */
 SELECT
   *
 FROM
-  next_event
+  next_events
 WHERE
   --update language, if needed
   regexp_contains(subtitle, '^en|eng|english')
