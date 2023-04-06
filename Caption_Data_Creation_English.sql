@@ -17,7 +17,7 @@ AND
   REGEXP_CONTAINS(post_evar83, 'enabled|disabled')
 AND
   --update date
-  DATETIME(sdpBusinessDate,"America/New_York" BETWEEN '2022-11-01' AND '2023-03-31'
+  DATETIME(sdpBusinessDate,"America/New_York") BETWEEN '2022-11-01' AND '2023-03-31'
 ),
 
 /*This pulls the next subtitle event for each event */
