@@ -24,17 +24,17 @@ AND
 next_event AS (
 SELECT
   base.*,
-  lead(subtitle) over (partition by adobe_id order by sdpBusinessDate) as next_event,
-  lead(sdpBusinessDate) over (partition by adobe_id order by sdpBusinessDate) as next_event_time
+  lead(subtitle) over (partition by aid order by sdpBusinessDate) as next_event,
+  lead(sdpBusinessDate) over (partition by aid order by sdpBusinessDate) as next_event_time
 FROM
-  `nbcu-ds-sandbox-a-001.jf_sandbox.Subtitle_Analysis_Clickstream_Base` base
+  `nbcu-ds-sandbox-a-001.Shunchao_Sandbox.Subtitle_Analysis_Clickstream_Base_alt` base
 )
 
 /*This narrows down tHe event pairs that start with English subtitles on and ends with disabled, another language, or null */
 SELECT
   *
 FROM
-  `nbcu-ds-sandbox-a-001.jf_sandbox.Subtitle_Analysis_Clickstream_Intermed`
+  `nbcu-ds-sandbox-a-001.Shunchao_Sandbox.Subtitle_Analysis_Clickstream_Intermed`
 WHERE
   --update language, if needed
   regexp_contains(subtitle, '^en|eng|english')
