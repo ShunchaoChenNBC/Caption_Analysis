@@ -6,7 +6,7 @@ CREATE OR REPLACE TABLE `nbcu-ds-sandbox-a-001.Shunchao_Sandbox.Subtitle_English
 /*First: pull adobe_id and timestamp of every subtitle event */
 WITH events AS (
 SELECT 
-  post_evar56 AS adobe_id,
+  post_evar56 AS aid,
   post_evar83 AS subtitle,
   sdpBusinessDate
 FROM 
@@ -17,24 +17,23 @@ AND
   REGEXP_CONTAINS(post_evar83, 'enabled|disabled')
 AND
   --update date
-  date(sdpBusinessDate) BETWEEN '2022-11-01' AND '2023-01-31'
+  date(sdpBusinessDate) BETWEEN '2022-11-01' AND '2023-03-31'
 ),
 
 /*This pulls the next subtitle event for each event */
 next_event AS (
 SELECT
-  base.*,
+  event.*,
   lead(subtitle) over (partition by aid order by sdpBusinessDate) as next_event,
   lead(sdpBusinessDate) over (partition by aid order by sdpBusinessDate) as next_event_time
-FROM
-  `nbcu-ds-sandbox-a-001.Shunchao_Sandbox.Subtitle_Analysis_Clickstream_Base_alt` base
+FROM event
 )
 
 /*This narrows down tHe event pairs that start with English subtitles on and ends with disabled, another language, or null */
 SELECT
   *
 FROM
-  `nbcu-ds-sandbox-a-001.Shunchao_Sandbox.Subtitle_Analysis_Clickstream_Intermed`
+  next_event
 WHERE
   --update language, if needed
   regexp_contains(subtitle, '^en|eng|english')
@@ -67,7 +66,7 @@ SELECT events.*,
 FROM `nbcu-ds-sandbox-a-001.Shunchao_Sandbox.Subtitle_English_Clickstream_Start_Points` events
 LEFT OUTER JOIN 
   `nbcu-ds-prod-001.PeacockDataMartSilver.SILVER_VIDEO` video
-  ON events.adobe_id = video.adobe_tracking_id 
+  ON events.aid = video.adobe_tracking_id 
   AND video.adobe_timestamp BETWEEN DATETIME(events.sdpBusinessDate,"America/New_York") AND IFNULL (DATETIME(events.next_event_time,"America/New_York"), DATETIME('2022-12-31', "America/New_York"))
 LEFT JOIN `nbcu-ds-prod-001.PeacockDataMartSilver.SILVER_COMPASS_METADATA_ALL` meta
 ON video.video_id = meta.ContentID
@@ -82,7 +81,7 @@ AND display_name NOT LIKE '%trailer%'
 SELECT *
 FROM usage
 LEFT JOIN `nbcu-ds-prod-001.PeacockDataMartSilver.SILVER_USER` users
-  ON usage.adobe_id = users.adobe_tracking_id
+  ON usage.aid = users.adobe_tracking_id
   AND usage.adobe_date = users.report_date
 WHERE users.report_date BETWEEN '2022-11-01' AND '2023-01-31' --update date
 
