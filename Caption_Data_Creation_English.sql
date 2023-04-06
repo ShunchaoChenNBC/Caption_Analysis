@@ -46,7 +46,7 @@ AND
 
 
 
-CREATE OR REPLACE TABLE `nbcu-ds-sandbox-a-001.Shunchao_Sandbox.Subtitle_English_Analysis` AS
+CREATE OR REPLACE TABLE `nbcu-ds-sandbox-a-001.Shunchao_Sandbox.Subtitle_English_Analysis_01` AS
 
 
 /* This gets video usage and title info for all periods where subtitles are enabled */
@@ -70,7 +70,7 @@ LEFT OUTER JOIN
   AND video.adobe_timestamp BETWEEN DATETIME(events.sdpBusinessDate,"America/New_York") AND IFNULL (DATETIME(events.next_event_time,"America/New_York"), DATETIME('2022-12-31', "America/New_York"))
 LEFT JOIN `nbcu-ds-prod-001.PeacockDataMartSilver.SILVER_COMPASS_METADATA_ALL` meta
 ON video.video_id = meta.ContentID
-WHERE adobe_date BETWEEN "2022-11-01" AND '2023-01-31' --update date
+WHERE adobe_date BETWEEN "2022-11-01" AND '2023-03-31' --update date
 AND num_seconds_played_no_ads > 0
 AND display_name NOT LIKE '%trailer%'
 )
@@ -83,6 +83,6 @@ FROM usage
 LEFT JOIN `nbcu-ds-prod-001.PeacockDataMartSilver.SILVER_USER` users
   ON usage.aid = users.adobe_tracking_id
   AND usage.adobe_date = users.report_date
-WHERE users.report_date BETWEEN '2022-11-01' AND '2023-01-31' --update date
+WHERE users.report_date BETWEEN '2022-11-01' AND '2023-03-31' --update date
 
 
