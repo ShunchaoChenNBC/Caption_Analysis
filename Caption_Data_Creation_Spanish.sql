@@ -42,3 +42,44 @@ AND
     OR next_event LIKE '%disabled%')
     OR next_event IS NULL)
 
+
+CREATE OR REPLACE TABLE `nbcu-ds-sandbox-a-001.Shunchao_Sandbox.Subtitle_Spanish_Analysis_01` AS
+
+/* This gets video usage and title info for all periods where subtitles are enabled */
+
+WITH usage AS (
+SELECT events.*,
+  adobe_date,
+  adobe_timestamp,
+  session_id,
+  display_name,
+  video_id,
+  meta.TitleName AS display_name_correct,
+  meta.ProductType AS content_type,
+  meta.TypeOfContent AS content_type_details,
+  meta.Secondary_Genre AS genre,
+  num_seconds_played_no_ads
+FROM `nbcu-ds-sandbox-a-001.Shunchao_Sandbox.Subtitle_Spanish_Clickstream_Start_Points` events
+LEFT OUTER JOIN 
+  `nbcu-ds-prod-001.PeacockDataMartSilver.SILVER_VIDEO` video
+  ON events.aid = video.adobe_tracking_id 
+  AND video.adobe_timestamp BETWEEN DATETIME(events.sdpBusinessDate,"America/New_York") AND DATETIME(events.next_event_time,"America/New_York")
+  --  IFNULL (DATETIME(events.next_event_time,"America/New_York"), DATETIME('2022-12-31', "America/New_York"))
+LEFT JOIN `nbcu-ds-prod-001.PeacockDataMartSilver.SILVER_COMPASS_METADATA_ALL` meta
+ON video.video_id = meta.ContentID
+WHERE adobe_date BETWEEN "2022-11-01" AND '2023-03-31' --update date
+AND num_seconds_played_no_ads > 0
+AND display_name NOT LIKE '%trailer%'
+)
+
+
+/* Joins to silver_user to get user data */
+
+SELECT *
+FROM usage
+LEFT JOIN `nbcu-ds-prod-001.PeacockDataMartSilver.SILVER_USER` users
+  ON usage.aid = users.adobe_tracking_id
+  AND usage.adobe_date = users.report_date
+WHERE users.report_date BETWEEN '2022-11-01' AND '2023-03-31' --update date
+
+
