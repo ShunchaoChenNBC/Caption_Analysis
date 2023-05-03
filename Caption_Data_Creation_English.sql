@@ -1,6 +1,6 @@
 /* Base table that pull all start and end points for users turning on subtitles*/
 
-CREATE OR REPLACE TABLE `nbcu-ds-sandbox-a-001.Shunchao_Sandbox.Subtitle_English_Clickstream_Start_Points` AS
+CREATE OR REPLACE TABLE `nbcu-ds-sandbox-a-001.Shunchao_Sandbox.Subtitle_English_Clickstream_Start_Points_Clickstream` AS
 
 
 /*First: pull adobe_id and timestamp of every subtitle event */
@@ -8,24 +8,24 @@ WITH events AS (
 SELECT 
   post_evar56 AS aid,
   post_evar83 AS subtitle,
-  sdpBusinessDate
+DATE(timestamp(post_cust_hit_time_gmt), "America/New_York") AS Adobe_Date,
 FROM 
-  `nbcu-sdp-prod-003.sdp_persistent_views.AdobeAnalyticsClickstreamView` click
+`nbcu-ds-prod-001.feed.adobe_clickstream`  click
 WHERE
   post_evar83 is not null
 AND 
   REGEXP_CONTAINS(post_evar83, 'enabled|disabled')
 AND
   --update date
-  DATETIME(sdpBusinessDate,"America/New_York") BETWEEN '2022-11-01' AND '2023-03-31'
+DATE(timestamp(post_cust_hit_time_gmt), "America/New_York") BETWEEN '2022-11-01' AND '2023-03-31'
 ),
 
 /*This pulls the next subtitle event for each event */
 next_events AS (
 SELECT
-  event.*,
-  lead(subtitle) over (partition by aid order by sdpBusinessDate) as next_event,
-  lead(sdpBusinessDate) over (partition by aid order by sdpBusinessDate) as next_event_time
+  events.*,
+  lead(subtitle) over (partition by aid order by Adobe_Date) as next_event,
+  lead(Adobe_Date) over (partition by aid order by Adobe_Date) as next_event_time
 FROM events
 )
 
