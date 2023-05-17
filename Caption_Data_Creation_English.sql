@@ -1,6 +1,4 @@
-/* Base table that pull all start and end points for users turning on subtitles*/
-
-CREATE OR REPLACE TABLE `nbcu-ds-sandbox-a-001.Shunchao_Sandbox.Subtitle_English_Clickstream_Start_Points_Clickstream` AS
+CREATE OR REPLACE TABLE `nbcu-ds-sandbox-a-001.Shunchao_Sandbox.Subtitle_English_Clickstream_Start_Points_1101_0430` AS
 
 
 /*First: pull adobe_id and timestamp of every subtitle event */
@@ -8,24 +6,24 @@ WITH events AS (
 SELECT 
   post_evar56 AS aid,
   post_evar83 AS subtitle,
-DATE(timestamp(post_cust_hit_time_gmt), "America/New_York") AS Adobe_Date,
+  post_cust_hit_time_gmt
 FROM 
-`nbcu-ds-prod-001.feed.adobe_clickstream`  click
+  `nbcu-ds-prod-001.feed.adobe_clickstream` click
 WHERE
   post_evar83 is not null
 AND 
   REGEXP_CONTAINS(post_evar83, 'enabled|disabled')
 AND
   --update date
-DATE(timestamp(post_cust_hit_time_gmt), "America/New_York") BETWEEN '2022-11-01' AND '2023-03-31'
+  DATETIME(timestamp(post_cust_hit_time_gmt),"America/New_York") BETWEEN '2022-11-01' AND '2023-04-30'
 ),
 
 /*This pulls the next subtitle event for each event */
 next_events AS (
 SELECT
   events.*,
-  lead(subtitle) over (partition by aid order by Adobe_Date) as next_event,
-  lead(Adobe_Date) over (partition by aid order by Adobe_Date) as next_event_time
+  lead(subtitle) over (partition by aid order by post_cust_hit_time_gmt) as next_event,
+  lead(post_cust_hit_time_gmt) over (partition by aid order by post_cust_hit_time_gmt) as next_event_time
 FROM events
 )
 
@@ -36,24 +34,22 @@ FROM
   next_events
 WHERE
   --update language, if needed
-  regexp_contains(subtitle, '^en|eng|english')
+  regexp_contains(subtitle, '^en|^eng|^english')
 AND 
   subtitle LIKE '%enabled%'
 AND 
-  ((NOT regexp_contains(next_event, '^en|eng|english') 
+  ((NOT regexp_contains(next_event, '^en|^eng|^english') 
     OR next_event LIKE '%disabled%')
     OR next_event IS NULL)
 
-
-
-CREATE OR REPLACE TABLE `nbcu-ds-sandbox-a-001.Shunchao_Sandbox.Subtitle_English_Analysis_05` AS
+CREATE OR REPLACE TABLE `nbcu-ds-sandbox-a-001.Shunchao_Sandbox.Subtitle_English_Analysis_07` AS
 
 
 /* This gets video usage and title info for all periods where subtitles are enabled */
 
-WITH usage AS (
+
 SELECT events.*,
-  events.adobe_date as Adobe_Dates,
+  events.post_cust_hit_time_gmt as Adobe_Dates,
   adobe_timestamp,
   session_id,
   display_name,
@@ -63,26 +59,16 @@ SELECT events.*,
   meta.TypeOfContent AS content_type_details,
   meta.Secondary_Genre AS genre,
   num_seconds_played_no_ads
-FROM `nbcu-ds-sandbox-a-001.Shunchao_Sandbox.Subtitle_English_Clickstream_Start_Points_Clickstream` events
+FROM `nbcu-ds-sandbox-a-001.Shunchao_Sandbox.Subtitle_English_Clickstream_Start_Points_1101_0430`  events
 LEFT OUTER JOIN 
   `nbcu-ds-prod-001.PeacockDataMartSilver.SILVER_VIDEO` video
   ON events.aid = video.adobe_tracking_id 
-  AND video.adobe_timestamp BETWEEN events.adobe_date AND IFNULL (events.next_event_time, DATETIME('2022-12-31', "America/New_York"))
+  AND video.adobe_timestamp BETWEEN DATETIME(timestamp(events.post_cust_hit_time_gmt),"America/New_York") AND IFNULL (DATETIME(timestamp(events.next_event_time),"America/New_York"), DATETIME('2022-12-31', "America/New_York"))
 LEFT JOIN `nbcu-ds-prod-001.PeacockDataMartSilver.SILVER_COMPASS_METADATA_ALL` meta
 ON video.video_id = meta.ContentID
-WHERE video.adobe_date BETWEEN "2022-11-01" AND '2023-03-31' --update date
+WHERE video.adobe_date BETWEEN "2022-11-01" AND '2023-04-30' --update date
 AND num_seconds_played_no_ads > 0
 AND display_name NOT LIKE '%trailer%'
-)
 
-
-/* Joins to silver_user to get user data */
-
-SELECT *
-FROM usage
-LEFT JOIN `nbcu-ds-prod-001.PeacockDataMartSilver.SILVER_USER` users
-  ON usage.aid = users.adobe_tracking_id
-  AND usage.Adobe_Dates = users.report_date
-WHERE users.report_date BETWEEN '2022-11-01' AND '2023-03-31' --update date
 
 
